@@ -818,6 +818,8 @@ def _render_config_page(templates, settings, logs, message=None, error=None, bas
     </form>
     <div class="card" style="margin-top:18px;">
       <h2 style="margin-top:0;">接口示例</h2>
+      <div class="hint">一行接口文档（可复制）</div>
+      <textarea id="demo-doc" readonly style="height:90px;"></textarea>
       <label>接口类型</label>
       <select id="demo-endpoint">
         <option value="qa">/qa</option>
@@ -882,10 +884,18 @@ def _render_config_page(templates, settings, logs, message=None, error=None, bas
     const textBlock = document.getElementById('demo-text-block');
     const productBlock = document.getElementById('demo-product-block');
     const resultBox = document.getElementById('demo-result');
+    const docBox = document.getElementById('demo-doc');
+    const docMap = {
+      qa: 'POST ' + baseUrl + 'qa body {"text":"..."} returns {"result":"..."}',
+      translate: 'POST ' + baseUrl + 'translate body {"text":"..."} returns {"result":"..."}',
+      brand: 'POST ' + baseUrl + 'brand body {"text":"..."} returns {"result":"..."}',
+      product: 'POST ' + baseUrl + 'product body {"title":"...","description":"..."} returns {"brand":"","title_cn":"","descption_cn":"","length":0,"width":0,"height":0,"weight_g":0,"volume_weight_g":0}',
+    };
     function toggleDemoFields() {
       const isProduct = endpointSelect.value === 'product';
       textBlock.style.display = isProduct ? 'none' : 'block';
       productBlock.style.display = isProduct ? 'block' : 'none';
+      docBox.value = docMap[endpointSelect.value] || '';
     }
     endpointSelect.addEventListener('change', toggleDemoFields);
     toggleDemoFields();
