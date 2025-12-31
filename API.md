@@ -27,7 +27,7 @@ python chatgpt_automation.py <mode> "<text>"
 
 参数说明:
 
-- `mode`: `translate` 或 `brand`
+- `mode`: `translate` / `brand` / `qa`
 - `text`: 用户输入内容
 - `--headless`: 可选，无头运行
 - `--start-minimized`: 可选，有头模式时最小化启动
@@ -83,6 +83,18 @@ python chatgpt_automation.py brand "Nike Air Max 270"
 
 输出: `是` 或 `否`
 
+### 接口 3: 问答 (QA)
+
+功能: 直接问答，默认走 API 模式，可在配置页切换为浏览器模式。
+
+调用:
+
+```bash
+python chatgpt_automation.py qa "请简要介绍一下 Takealot 平台"
+```
+
+输出: GPT/模型回复文本
+
 ## HTTP 服务模式
 
 启动服务:
@@ -101,6 +113,8 @@ py chatgpt_automation.py serve --host 127.0.0.1 --port 8000 --headed
 
 - `POST /translate`
 - `POST /brand`
+- `POST /qa`
+- `POST /product`
 - `Content-Type: application/json`
 - Body: `{ "text": "..." }`
 
@@ -135,6 +149,13 @@ http://127.0.0.1:8000/config
 
 可在该页面同时配置预热页签数/最大页签数/单页最大对话次数/最大等待队列数，保存后立即生效。
 
+问答模式支持两种调用方式:
+
+- `API`（默认）: 通过 Grsai API (`https://grsaiapi.com/v1/chat/completions`) 请求
+- `浏览器`: 走 ChatGPT 页面自动化
+
+默认模型: `gemini-3-pro`。API 模式需填写 `API Key`。
+
 页面底部会显示最近 100 条日志，上滑可加载更多历史日志。
 
 ## MySQL 配置
@@ -167,6 +188,33 @@ curl -X POST http://127.0.0.1:8000/translate ^
 curl -X POST http://127.0.0.1:8000/brand ^
   -H "Content-Type: application/json" ^
   -d "{\"text\":\"Nike Air Max 270\"}"
+```
+
+```bash
+curl -X POST http://127.0.0.1:8000/qa ^
+  -H "Content-Type: application/json" ^
+  -d "{\"text\":\"请用一句话介绍 Takealot\"}"
+```
+
+```bash
+curl -X POST http://127.0.0.1:8000/product ^
+  -H "Content-Type: application/json" ^
+  -d "{\"title\":\"Nike Air Max 270\",\"description\":\"brand: Nike; size: 30cm x 20cm x 10cm; weight: 500g\"}"
+```
+
+返回示例:
+
+```json
+{
+  "brand": "Nike",
+  "title_cn": "Nike Air Max 270",
+  "descption_cn": "品牌: Nike; 尺寸: 30cm x 20cm x 10cm; 重量: 500g",
+  "length": 30,
+  "width": 20,
+  "height": 10,
+  "weight_g": 500,
+  "volume_weight_g": 10000
+}
 ```
 
 ## 运行注意事项

@@ -5,11 +5,16 @@ import os
 import sys
 import threading
 import time
+import socket
+import re
+import webbrowser
 from html import escape
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from socketserver import ThreadingMixIn
 from pathlib import Path
 from urllib.parse import parse_qs
+import urllib.error
+import urllib.request
 
 from playwright.async_api import TimeoutError as AsyncPlaywrightTimeoutError
 from playwright.async_api import async_playwright
@@ -25,6 +30,19 @@ DEBUG_DIR = "debug"
 DEFAULT_STABILIZE_DELAY = 1.0
 DEFAULT_TRANSLATE_TEMPLATE = "只翻译,无需返回其他内容: {text}"
 DEFAULT_BRAND_TEMPLATE = "只返回是/否,无需返回其他内容;在Takealot中跟卖是否存在品牌侵权: {text}"
+DEFAULT_QA_MODE = "api"
+DEFAULT_API_BASE_URL = "https://grsaiapi.com"
+DEFAULT_QA_MODEL = "gemini-3-pro"
+DEFAULT_API_TIMEOUT_SEC = 120
+SUPPORTED_API_MODELS = [
+    "nano-banana-fast",
+    "nano-banana",
+    "gemini-3-pro",
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.5-flash-lite",
+]
+PRODUCT_ENDPOINT = "/product"
 DEFAULT_WARM_PAGES = 5
 DEFAULT_MAX_PAGES = 10
 DEFAULT_MAX_TURNS_PER_PAGE = 10
@@ -187,6 +205,26 @@ def _ensure_db():
             "INSERT IGNORE INTO prompt_settings (setting_key, setting_value) VALUES (%s, %s)",
             ("max_queue_waiters", str(DEFAULT_MAX_QUEUE_WAITERS)),
         )
+        cur.execute(
+            "INSERT IGNORE INTO prompt_settings (setting_key, setting_value) VALUES (%s, %s)",
+            ("qa_mode", DEFAULT_QA_MODE),
+        )
+        cur.execute(
+            "INSERT IGNORE INTO prompt_settings (setting_key, setting_value) VALUES (%s, %s)",
+            ("api_base_url", DEFAULT_API_BASE_URL),
+        )
+        cur.execute(
+            "INSERT IGNORE INTO prompt_settings (setting_key, setting_value) VALUES (%s, %s)",
+            ("api_key", ""),
+        )
+        cur.execute(
+            "INSERT IGNORE INTO prompt_settings (setting_key, setting_value) VALUES (%s, %s)",
+            ("api_model", DEFAULT_QA_MODEL),
+        )
+        cur.execute(
+            "INSERT IGNORE INTO prompt_settings (setting_key, setting_value) VALUES (%s, %s)",
+            ("api_timeout_sec", str(DEFAULT_API_TIMEOUT_SEC)),
+        )
     finally:
         conn.close()
 
@@ -245,22 +283,54 @@ def _get_settings():
         "max_pages": DEFAULT_MAX_PAGES,
         "max_turns_per_page": DEFAULT_MAX_TURNS_PER_PAGE,
         "max_queue_waiters": DEFAULT_MAX_QUEUE_WAITERS,
+        "qa_mode": DEFAULT_QA_MODE,
+        "api_base_url": DEFAULT_API_BASE_URL,
+        "api_key": "",
+        "api_model": DEFAULT_QA_MODEL,
+        "api_timeout_sec": DEFAULT_API_TIMEOUT_SEC,
     }
+    int_keys = {"warm_pages", "max_pages", "max_turns_per_page", "max_queue_waiters", "api_timeout_sec"}
     try:
         cur = conn.cursor()
         cur.execute("SELECT setting_key, setting_value FROM prompt_settings")
         for key, value in cur.fetchall():
             if key in settings:
-                try:
-                    settings[key] = int(value)
-                except ValueError:
-                    continue
+                if key in int_keys:
+                    try:
+                        settings[key] = int(value)
+                    except ValueError:
+                        continue
+                else:
+                    settings[key] = value
     finally:
         conn.close()
+    qa_mode = (settings.get("qa_mode") or DEFAULT_QA_MODE).strip().lower()
+    if qa_mode not in ("api", "browser"):
+        qa_mode = DEFAULT_QA_MODE
+    settings["qa_mode"] = qa_mode
+    if not (settings.get("api_base_url") or "").strip():
+        settings["api_base_url"] = DEFAULT_API_BASE_URL
+    if not (settings.get("api_model") or "").strip():
+        settings["api_model"] = DEFAULT_QA_MODEL
+    try:
+        api_timeout = int(settings.get("api_timeout_sec") or DEFAULT_API_TIMEOUT_SEC)
+    except (TypeError, ValueError):
+        api_timeout = DEFAULT_API_TIMEOUT_SEC
+    settings["api_timeout_sec"] = api_timeout
     return settings
 
 
-def _save_settings(warm_pages, max_pages, max_turns_per_page, max_queue_waiters):
+def _save_settings(
+    warm_pages,
+    max_pages,
+    max_turns_per_page,
+    max_queue_waiters,
+    qa_mode,
+    api_base_url,
+    api_key,
+    api_model,
+    api_timeout_sec,
+):
     _ensure_db()
     cfg = _db_config()
     conn = _db_connect(database=cfg["database"])
@@ -298,6 +368,46 @@ def _save_settings(warm_pages, max_pages, max_turns_per_page, max_queue_waiters)
             """,
             ("max_queue_waiters", str(max_queue_waiters)),
         )
+        cur.execute(
+            """
+            INSERT INTO prompt_settings (setting_key, setting_value)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+            """,
+            ("qa_mode", (qa_mode or DEFAULT_QA_MODE).strip().lower()),
+        )
+        cur.execute(
+            """
+            INSERT INTO prompt_settings (setting_key, setting_value)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+            """,
+            ("api_base_url", (api_base_url or DEFAULT_API_BASE_URL).strip()),
+        )
+        cur.execute(
+            """
+            INSERT INTO prompt_settings (setting_key, setting_value)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+            """,
+            ("api_key", api_key),
+        )
+        cur.execute(
+            """
+            INSERT INTO prompt_settings (setting_key, setting_value)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+            """,
+            ("api_model", (api_model or DEFAULT_QA_MODEL).strip()),
+        )
+        cur.execute(
+            """
+            INSERT INTO prompt_settings (setting_key, setting_value)
+            VALUES (%s, %s)
+            ON DUPLICATE KEY UPDATE setting_value = VALUES(setting_value)
+            """,
+            ("api_timeout_sec", str(api_timeout_sec)),
+        )
     finally:
         conn.close()
 
@@ -308,6 +418,214 @@ def _apply_template(template, text):
     return f"{template} {text}".strip()
 
 
+def _build_chat_api_url(base_url):
+    base = (base_url or "").strip()
+    if not base:
+        base = DEFAULT_API_BASE_URL
+    if base.endswith("/"):
+        base = base[:-1]
+    if base.endswith("/v1/chat/completions"):
+        return base
+    if base.endswith("/v1"):
+        return f"{base}/chat/completions"
+    return f"{base}/v1/chat/completions"
+
+
+def _call_chat_api(text, settings, timeout_sec=None):
+    api_key = (settings.get("api_key") or "").strip()
+    if not api_key:
+        raise RuntimeError("API Key 为空，请先在配置页填写。")
+    base_url = settings.get("api_base_url") or DEFAULT_API_BASE_URL
+    model = settings.get("api_model") or DEFAULT_QA_MODEL
+    if timeout_sec is None:
+        timeout_sec = settings.get("api_timeout_sec") or DEFAULT_API_TIMEOUT_SEC
+    url = _build_chat_api_url(base_url)
+    payload = {
+        "model": model,
+        "stream": False,
+        "messages": [{"role": "user", "content": text}],
+    }
+    body = json.dumps(payload, ensure_ascii=True).encode("utf-8")
+    req = urllib.request.Request(
+        url,
+        data=body,
+        headers={
+            "Content-Type": "application/json",
+            "Authorization": f"Bearer {api_key}",
+        },
+        method="POST",
+    )
+    logger = Logger()
+    start_ts = time.time()
+    logger.write("INFO", f"API request start model={model} url={url}")
+    try:
+        with urllib.request.urlopen(req, timeout=timeout_sec) as resp:
+            data = resp.read().decode("utf-8")
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="ignore")
+        logger.write("ERROR", f"API request HTTP {exc.code}: {detail}")
+        raise RuntimeError(f"API 请求失败: HTTP {exc.code} {detail}") from exc
+    except urllib.error.URLError as exc:
+        logger.write("ERROR", f"API request URLError: {exc}")
+        raise RuntimeError(f"API 请求失败: {exc}") from exc
+    except socket.timeout as exc:
+        logger.write("ERROR", f"API request timeout: {exc}")
+        raise RuntimeError("API 请求超时，请稍后重试。") from exc
+
+    _write_api_response_debug(data)
+
+    if "data:" in data:
+        chunks = []
+        for line in data.splitlines():
+            line = line.strip()
+            if not line.startswith("data:"):
+                continue
+            line = line[5:].strip()
+            if not line or line == "[DONE]":
+                continue
+            try:
+                piece = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            try:
+                delta = piece["choices"][0].get("delta") or {}
+                content = delta.get("content")
+                if content:
+                    chunks.append(content)
+                    continue
+            except (KeyError, IndexError, TypeError):
+                pass
+            try:
+                message = piece["choices"][0].get("message") or {}
+                content = message.get("content")
+                if content:
+                    chunks.append(content)
+            except (KeyError, IndexError, TypeError):
+                continue
+        if chunks:
+            content = "".join(chunks)
+            logger.write("INFO", f"API request completed in {time.time() - start_ts:.2f}s")
+            return _strip_think(content)
+
+    try:
+        payload = json.loads(data)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("API 响应不是有效 JSON。") from exc
+
+    try:
+        content = payload["choices"][0]["message"]["content"]
+        logger.write("INFO", f"API request completed in {time.time() - start_ts:.2f}s")
+        return _strip_think(content)
+    except (KeyError, IndexError, TypeError) as exc:
+        raise RuntimeError(f"API 响应格式异常: {payload}") from exc
+
+
+def _extract_json_object(text):
+    if not text:
+        return ""
+    start = text.find("{")
+    if start == -1:
+        return ""
+    depth = 0
+    for i in range(start, len(text)):
+        ch = text[i]
+        if ch == "{":
+            depth += 1
+        elif ch == "}":
+            depth -= 1
+            if depth == 0:
+                return text[start : i + 1]
+    return ""
+
+
+def _to_number(value):
+    if value is None:
+        return 0.0
+    if isinstance(value, (int, float)):
+        return float(value)
+    text = str(value).strip()
+    if not text:
+        return 0.0
+    cleaned = ""
+    for ch in text:
+        if ch.isdigit() or ch == "." or ch == "-":
+            cleaned += ch
+    try:
+        return float(cleaned)
+    except ValueError:
+        return 0.0
+
+
+def _normalize_product_payload(data):
+    brand = (data.get("brand") or "").strip()
+    title_cn = (data.get("title_cn") or "").strip()
+    descption_cn = (data.get("descption_cn") or "").strip()
+    length = _to_number(data.get("length"))
+    width = _to_number(data.get("width"))
+    height = _to_number(data.get("height"))
+    weight_g = _to_number(data.get("weight_g") or data.get("weight"))
+    volume_weight_g = 0.0
+    if length > 0 and width > 0 and height > 0:
+        volume_weight_g = (length * width * height / 6000.0) * 1000.0
+    return {
+        "brand": brand,
+        "title_cn": title_cn,
+        "descption_cn": descption_cn,
+        "length": length,
+        "width": width,
+        "height": height,
+        "weight_g": weight_g,
+        "volume_weight_g": volume_weight_g,
+    }
+
+
+def _build_product_prompt(title, description):
+    return (
+        "You are a strict JSON generator. "
+        "Return ONLY a JSON object, no extra text. "
+        "Extract brand from description field named 'brand' if present; otherwise empty string. "
+        "Translate title and description to Chinese. "
+        "Extract length/width/height in cm and weight in g from description if present; if not found use 0. "
+        "Always output numeric values for length/width/height/weight_g. "
+        "Output schema exactly: "
+        "{brand:'', title_cn:'', descption_cn:'', length:0, width:0, height:0, weight_g:0}. "
+        f"Input title: {title}. Input description: {description}."
+    )
+
+
+def _call_product_api(title, description, settings):
+    prompt = _build_product_prompt(title, description)
+    text = _call_chat_api(prompt, settings)
+    json_text = _extract_json_object(text)
+    if not json_text:
+        raise RuntimeError("API 返回未包含 JSON。")
+    try:
+        payload = json.loads(json_text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("API 返回 JSON 解析失败。") from exc
+    return _normalize_product_payload(payload)
+
+
+def _write_api_response_debug(data):
+    try:
+        Path(LOG_DIR).mkdir(parents=True, exist_ok=True)
+        path = Path(LOG_DIR) / "api_response.log"
+        timestamp = time.strftime("%Y-%m-%d %H:%M:%S")
+        thread_id = threading.get_ident()
+        entry = f"{timestamp} [thread {thread_id}] {data}\n"
+        with path.open("a", encoding="utf-8") as f:
+            f.write(entry)
+    except Exception:
+        pass
+
+
+def _strip_think(text):
+    if not text:
+        return text
+    cleaned = re.sub(r"<think>.*?</think>", "", text, flags=re.DOTALL | re.IGNORECASE)
+    return cleaned.strip()
+
+
 def _render_config_page(templates, settings, logs, message=None, error=None, base_url="/"):
     translate = escape(templates.get("translate", DEFAULT_TRANSLATE_TEMPLATE))
     brand = escape(templates.get("brand", DEFAULT_BRAND_TEMPLATE))
@@ -315,6 +633,21 @@ def _render_config_page(templates, settings, logs, message=None, error=None, bas
     max_pages = escape(str(settings.get("max_pages", DEFAULT_MAX_PAGES)))
     max_turns = escape(str(settings.get("max_turns_per_page", DEFAULT_MAX_TURNS_PER_PAGE)))
     max_waiters = escape(str(settings.get("max_queue_waiters", DEFAULT_MAX_QUEUE_WAITERS)))
+    qa_mode = settings.get("qa_mode", DEFAULT_QA_MODE)
+    api_base_url = escape(str(settings.get("api_base_url", DEFAULT_API_BASE_URL)))
+    api_key = escape(str(settings.get("api_key", "")))
+    api_model = escape(str(settings.get("api_model", DEFAULT_QA_MODEL)))
+    api_timeout_sec = escape(str(settings.get("api_timeout_sec", DEFAULT_API_TIMEOUT_SEC)))
+    model_value = (settings.get("api_model") or DEFAULT_QA_MODEL).strip()
+    options = []
+    if model_value and model_value not in SUPPORTED_API_MODELS:
+        custom_value = escape(model_value)
+        options.append(f'<option value="{custom_value}" selected>{custom_value} (custom)</option>')
+    for model in SUPPORTED_API_MODELS:
+        selected = " selected" if model == model_value else ""
+        model_escaped = escape(model)
+        options.append(f'<option value="{model_escaped}"{selected}>{model_escaped}</option>')
+    api_model_options = "\n".join(options)
     base_url = (base_url or "/").strip()
     if not base_url.endswith("/"):
         base_url += "/"
@@ -368,7 +701,7 @@ def _render_config_page(templates, settings, logs, message=None, error=None, bas
     .status { font-size: 13px; }
     .grid {
       display: grid;
-      grid-template-columns: 1.2fr 0.8fr;
+      grid-template-columns: 1.1fr 0.7fr 0.7fr;
       gap: 20px;
       margin-top: 18px;
     }
@@ -408,6 +741,14 @@ def _render_config_page(templates, settings, logs, message=None, error=None, bas
       font-weight: 600;
     }
     button:hover { background: var(--accent-2); }
+    select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      padding: 8px 10px;
+      background: #fbfaf7;
+    }
+    .section-title { margin: 18px 0 8px; font-size: 15px; }
     #log-container {
       border: 1px solid var(--line);
       padding: 10px;
@@ -454,8 +795,52 @@ def _render_config_page(templates, settings, logs, message=None, error=None, bas
         <label>最大等待队列数</label>
         <input type="number" name="max_queue_waiters" value="__MAX_WAITERS__" min="0" max="100" />
       </div>
+      <div class="card">
+        <div class="section-title">问答 API</div>
+        <label>问答模式</label>
+        <select name="qa_mode">
+          <option value="api" __QA_MODE_API__>API</option>
+          <option value="browser" __QA_MODE_BROWSER__>浏览器</option>
+        </select>
+        <label>API 地址</label>
+        <input type="text" name="api_base_url" value="__API_BASE_URL__" />
+        <div class="hint">默认: https://grsaiapi.com</div>
+        <label>API Key</label>
+        <input type="password" name="api_key" value="__API_KEY__" />
+        <label>默认模型</label>
+        <select name="api_model">
+          __API_MODEL_OPTIONS__
+        </select>
+        <label>API 超时(秒)</label>
+        <input type="number" name="api_timeout_sec" value="__API_TIMEOUT__" min="10" max="600" />
+      </div>
     </div>
     </form>
+    <div class="card" style="margin-top:18px;">
+      <h2 style="margin-top:0;">接口示例</h2>
+      <label>接口类型</label>
+      <select id="demo-endpoint">
+        <option value="qa">/qa</option>
+        <option value="translate">/translate</option>
+        <option value="brand">/brand</option>
+        <option value="product">/product</option>
+      </select>
+      <div id="demo-text-block">
+        <label>text</label>
+        <textarea id="demo-text">test</textarea>
+      </div>
+      <div id="demo-product-block" style="display:none;">
+        <label>title</label>
+        <input type="text" id="demo-title" value="Nike Air Max 270" />
+        <label>description</label>
+        <textarea id="demo-description">brand: Nike; size: 30cm x 20cm x 10cm; weight: 500g</textarea>
+      </div>
+      <div class="actions">
+        <button type="button" id="demo-send">发送请求</button>
+      </div>
+      <div class="hint">返回结果</div>
+      <div id="demo-result" style="white-space:pre-wrap; background:#0b0f14; color:#d6e3f0; padding:10px; border-radius:10px; font-family:Consolas, 'Courier New', monospace; font-size:12px;"></div>
+    </div>
     <div class="card" style="margin-top:18px;">
       <h2 style="margin-top:0;">日志</h2>
       <div id="log-container"></div>
@@ -492,6 +877,44 @@ def _render_config_page(templates, settings, logs, message=None, error=None, bas
         loadMore(true);
       }
     });
+
+    const endpointSelect = document.getElementById('demo-endpoint');
+    const textBlock = document.getElementById('demo-text-block');
+    const productBlock = document.getElementById('demo-product-block');
+    const resultBox = document.getElementById('demo-result');
+    function toggleDemoFields() {
+      const isProduct = endpointSelect.value === 'product';
+      textBlock.style.display = isProduct ? 'none' : 'block';
+      productBlock.style.display = isProduct ? 'block' : 'none';
+    }
+    endpointSelect.addEventListener('change', toggleDemoFields);
+    toggleDemoFields();
+
+    document.getElementById('demo-send').addEventListener('click', () => {
+      const endpoint = endpointSelect.value;
+      let body = {};
+      if (endpoint === 'product') {
+        body = {
+          title: document.getElementById('demo-title').value,
+          description: document.getElementById('demo-description').value,
+        };
+      } else {
+        body = { text: document.getElementById('demo-text').value };
+      }
+      resultBox.textContent = '请求中...';
+      fetch(baseUrl + endpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+        .then(r => r.json())
+        .then(data => {
+          resultBox.textContent = JSON.stringify(data, null, 2);
+        })
+        .catch(err => {
+          resultBox.textContent = String(err);
+        });
+    });
   </script>
 </body>
 </html>"""
@@ -505,6 +928,13 @@ def _render_config_page(templates, settings, logs, message=None, error=None, bas
     html = html.replace("__LOGS_JSON__", logs_json)
     html = html.replace("__LOGS_LEN__", str(logs_len))
     html = html.replace("__BASE_URL__", base_url)
+    html = html.replace("__QA_MODE_API__", "selected" if qa_mode == "api" else "")
+    html = html.replace("__QA_MODE_BROWSER__", "selected" if qa_mode == "browser" else "")
+    html = html.replace("__API_BASE_URL__", api_base_url)
+    html = html.replace("__API_KEY__", api_key)
+    html = html.replace("__API_MODEL__", api_model)
+    html = html.replace("__API_MODEL_OPTIONS__", api_model_options)
+    html = html.replace("__API_TIMEOUT__", api_timeout_sec)
     return html
 
 
@@ -590,6 +1020,9 @@ class ChatGPTClient:
         templates = self.template_provider()
         prompt = _apply_template(templates.get("brand", DEFAULT_BRAND_TEMPLATE), text)
         return self._ask_in_new_tab(prompt)
+
+    def ask(self, text):
+        return self._ask_in_new_tab(text)
 
     def _ask_in_new_tab(self, prompt):
         last_error = None
@@ -2228,8 +2661,11 @@ class _ThreadingHTTPServer(ThreadingMixIn, HTTPServer):
     daemon_threads = True
 
 
-def _make_handler(engine):
+def _make_handler(engine_provider):
     class Handler(BaseHTTPRequestHandler):
+        def _get_engine(self, start_if_missing=True):
+            return engine_provider(start_if_missing)
+
         def _send_json(self, status, payload):
             data = json.dumps(payload, ensure_ascii=True).encode("utf-8")
             self.send_response(status)
@@ -2294,7 +2730,25 @@ def _make_handler(engine):
                 return
 
             if self.path == "/health":
-                self._send_json(200, {"pool": engine.get_pool_status()})
+                engine = engine_provider(False)
+                if engine is None:
+                    self._send_json(
+                        200,
+                        {
+                            "pool": {
+                                "total": 0,
+                                "busy": 0,
+                                "idle": 0,
+                                "max_pages": 0,
+                                "warm_pages": 0,
+                                "max_turns_per_page": 0,
+                                "max_queue_waiters": 0,
+                                "waiters": 0,
+                            }
+                        },
+                    )
+                else:
+                    self._send_json(200, {"pool": engine.get_pool_status()})
                 return
 
             if self.path.startswith("/logs"):
@@ -2321,10 +2775,50 @@ def _make_handler(engine):
                 max_pages = (form.get("max_pages") or [""])[0].strip()
                 max_turns_per_page = (form.get("max_turns_per_page") or [""])[0].strip()
                 max_queue_waiters = (form.get("max_queue_waiters") or [""])[0].strip()
+                qa_mode = (form.get("qa_mode") or [""])[0].strip()
+                api_base_url = (form.get("api_base_url") or [""])[0].strip()
+                api_key = (form.get("api_key") or [""])[0].strip()
+                api_model = (form.get("api_model") or [""])[0].strip()
+                api_timeout_sec = (form.get("api_timeout_sec") or [""])[0].strip()
+                if qa_mode not in ("api", "browser"):
+                    qa_mode = DEFAULT_QA_MODE
+                api_base_url = api_base_url or DEFAULT_API_BASE_URL
+                api_model = api_model or DEFAULT_QA_MODEL
+                try:
+                    warm_pages_val = int(warm_pages or DEFAULT_WARM_PAGES)
+                except ValueError:
+                    warm_pages_val = DEFAULT_WARM_PAGES
+                try:
+                    max_pages_val = int(max_pages or DEFAULT_MAX_PAGES)
+                except ValueError:
+                    max_pages_val = DEFAULT_MAX_PAGES
+                try:
+                    max_turns_val = int(max_turns_per_page or DEFAULT_MAX_TURNS_PER_PAGE)
+                except ValueError:
+                    max_turns_val = DEFAULT_MAX_TURNS_PER_PAGE
+                try:
+                    max_waiters_val = int(max_queue_waiters or DEFAULT_MAX_QUEUE_WAITERS)
+                except ValueError:
+                    max_waiters_val = DEFAULT_MAX_QUEUE_WAITERS
+                try:
+                    api_timeout_val = int(api_timeout_sec or DEFAULT_API_TIMEOUT_SEC)
+                except ValueError:
+                    api_timeout_val = DEFAULT_API_TIMEOUT_SEC
                 if not translate_template or not brand_template:
+                    settings = {
+                        "warm_pages": warm_pages_val,
+                        "max_pages": max_pages_val,
+                        "max_turns_per_page": max_turns_val,
+                        "max_queue_waiters": max_waiters_val,
+                        "qa_mode": qa_mode,
+                        "api_base_url": api_base_url,
+                        "api_key": api_key,
+                        "api_model": api_model,
+                        "api_timeout_sec": api_timeout_val,
+                    }
                     page = _render_config_page(
                         {"translate": translate_template, "brand": brand_template},
-                        _get_settings(),
+                        settings,
                         _read_log_tail(100),
                         error="模板不能为空",
                         base_url=self._base_url(),
@@ -2333,10 +2827,15 @@ def _make_handler(engine):
                     try:
                         _save_templates(translate_template, brand_template)
                         _save_settings(
-                            int(warm_pages or DEFAULT_WARM_PAGES),
-                            int(max_pages or DEFAULT_MAX_PAGES),
-                            int(max_turns_per_page or DEFAULT_MAX_TURNS_PER_PAGE),
-                            int(max_queue_waiters or DEFAULT_MAX_QUEUE_WAITERS),
+                            warm_pages_val,
+                            max_pages_val,
+                            max_turns_val,
+                            max_waiters_val,
+                            qa_mode,
+                            api_base_url,
+                            api_key,
+                            api_model,
+                            api_timeout_val,
                         )
                         page = _render_config_page(
                             {"translate": translate_template, "brand": brand_template},
@@ -2361,7 +2860,7 @@ def _make_handler(engine):
                 self.wfile.write(data)
                 return
 
-            if self.path not in ("/translate", "/brand"):
+            if self.path not in ("/translate", "/brand", "/qa", PRODUCT_ENDPOINT):
                 self._send_json(404, {"error": "not_found"})
                 return
 
@@ -2370,23 +2869,54 @@ def _make_handler(engine):
                 self._send_json(400, {"error": "invalid_json"})
                 return
 
-            text = (data.get("text") or "").strip()
-            if not text:
-                self._send_json(400, {"error": "missing_text"})
-                return
+            if self.path == PRODUCT_ENDPOINT:
+                title = (data.get("title") or "").strip()
+                description = (data.get("description") or data.get("descption") or "").strip()
+                if not title and not description:
+                    self._send_json(400, {"error": "missing_title_or_description"})
+                    return
+            else:
+                text = (data.get("text") or "").strip()
+                if not text:
+                    self._send_json(400, {"error": "missing_text"})
+                    return
 
             try:
-                templates = _get_templates()
-                if self.path == "/translate":
-                    prompt = _apply_template(templates.get("translate", DEFAULT_TRANSLATE_TEMPLATE), text)
+                settings = _get_settings()
+                if self.path == PRODUCT_ENDPOINT:
+                    result = _call_product_api(title, description, settings)
+                elif settings.get("qa_mode") == "api":
+                    if self.path == "/translate":
+                        templates = _get_templates()
+                        prompt = _apply_template(templates.get("translate", DEFAULT_TRANSLATE_TEMPLATE), text)
+                        result = _call_chat_api(prompt, settings)
+                    elif self.path == "/brand":
+                        templates = _get_templates()
+                        prompt = _apply_template(templates.get("brand", DEFAULT_BRAND_TEMPLATE), text)
+                        result = _call_chat_api(prompt, settings)
+                    else:
+                        result = _call_chat_api(text, settings)
                 else:
-                    prompt = _apply_template(templates.get("brand", DEFAULT_BRAND_TEMPLATE), text)
-                result = engine.run_prompt(prompt)
+                    if self.path == "/translate":
+                        templates = _get_templates()
+                        prompt = _apply_template(templates.get("translate", DEFAULT_TRANSLATE_TEMPLATE), text)
+                    elif self.path == "/brand":
+                        templates = _get_templates()
+                        prompt = _apply_template(templates.get("brand", DEFAULT_BRAND_TEMPLATE), text)
+                    else:
+                        prompt = text
+                    engine = self._get_engine(True)
+                    if engine is None:
+                        raise RuntimeError("浏览器引擎未初始化，请重试。")
+                    result = engine.run_prompt(prompt)
             except Exception as exc:
                 self._send_json(500, {"error": "internal_error", "detail": str(exc)})
                 return
 
-            self._send_json(200, {"result": result})
+            if self.path == PRODUCT_ENDPOINT:
+                self._send_json(200, result)
+            else:
+                self._send_json(200, {"result": result})
 
         def log_message(self, format, *args):
             return
@@ -2396,7 +2926,11 @@ def _make_handler(engine):
 
 def build_run_parser():
     parser = argparse.ArgumentParser(description="ChatGPT automation for translation and brand infringement check.")
-    parser.add_argument("mode", choices=["translate", "brand"], help="translate: 只翻译; brand: 品牌侵权判断")
+    parser.add_argument(
+        "mode",
+        choices=["translate", "brand", "qa"],
+        help="translate: 只翻译; brand: 品牌侵权判断; qa: 问答",
+    )
     parser.add_argument("text", nargs="+", help="要输入的内容")
     parser.add_argument("--headless", action="store_true", help="无头模式运行浏览器")
     parser.add_argument("--start-minimized", action="store_true", help="有头模式时最小化启动")
@@ -2447,23 +2981,37 @@ def _run_cli(args):
         args.max_queue_waiters if args.max_queue_waiters is not None else settings["max_queue_waiters"]
     )
 
-    with ChatGPTClient(
-        headless=args.headless,
-        user_data_dir=args.profile,
-        timeout_ms=args.timeout,
-        retries=args.retries,
-        retry_delay=args.retry_delay,
-        start_minimized=args.start_minimized,
-        debug=args.debug,
-        warm_pages=warm_pages,
-        max_pages=max_pages,
-        max_turns_per_page=max_turns_per_page,
-        max_queue_waiters=max_queue_waiters,
-    ) as client:
+    if settings.get("qa_mode") == "api":
         if args.mode == "translate":
-            result = client.translate(text)
+            templates = _get_templates()
+            prompt = _apply_template(templates.get("translate", DEFAULT_TRANSLATE_TEMPLATE), text)
+            result = _call_chat_api(prompt, settings)
+        elif args.mode == "brand":
+            templates = _get_templates()
+            prompt = _apply_template(templates.get("brand", DEFAULT_BRAND_TEMPLATE), text)
+            result = _call_chat_api(prompt, settings)
         else:
-            result = client.brand_infringement(text)
+            result = _call_chat_api(text, settings)
+    else:
+        with ChatGPTClient(
+            headless=args.headless,
+            user_data_dir=args.profile,
+            timeout_ms=args.timeout,
+            retries=args.retries,
+            retry_delay=args.retry_delay,
+            start_minimized=args.start_minimized,
+            debug=args.debug,
+            warm_pages=warm_pages,
+            max_pages=max_pages,
+            max_turns_per_page=max_turns_per_page,
+            max_queue_waiters=max_queue_waiters,
+        ) as client:
+            if args.mode == "translate":
+                result = client.translate(text)
+            elif args.mode == "brand":
+                result = client.brand_infringement(text)
+            else:
+                result = client.ask(text)
 
     print(result)
     return 0
@@ -2495,27 +3043,40 @@ def _run_server(args):
         "max_queue_waiters": max_queue_waiters,
         "warm_on_start": False,
     }
-    engine = AsyncEngine(client_kwargs)
-    engine.start()
-    server = _ThreadingHTTPServer((args.host, args.port), _make_handler(engine))
+    engine_ref = {"engine": None}
+
+    def _start_engine():
+        if engine_ref["engine"] is not None:
+            return engine_ref["engine"]
+        engine = AsyncEngine(client_kwargs)
+        engine.start()
+        engine.warm_pool()
+        engine_ref["engine"] = engine
+        return engine
+
+    def _engine_provider(start_if_missing=True):
+        if engine_ref["engine"] is not None:
+            return engine_ref["engine"]
+        if not start_if_missing:
+            return None
+        return _start_engine()
+
+    server = _ThreadingHTTPServer((args.host, args.port), _make_handler(_engine_provider))
     print(f"HTTP server listening on http://{args.host}:{args.port}")
     if not args.headless:
-        base_url = f"http://{args.host}:{args.port}/"
+        base_url = f"http://{args.host}:{args.port}/config"
         try:
-            templates = _get_templates()
-            logs = _read_log_tail(100)
-            html = _render_config_page(templates, settings, logs, base_url=base_url)
-            engine.open_config_page(html)
-        except Exception as exc:
-            Logger().write("ERROR", f"Config page open failed: {exc}")
+            webbrowser.open(base_url)
+        except Exception:
+            pass
     try:
-        engine.warm_pool()
         server.serve_forever()
     except KeyboardInterrupt:
         pass
     finally:
         server.server_close()
-        engine.stop()
+        if engine_ref["engine"] is not None:
+            engine_ref["engine"].stop()
 
 
 def main():

@@ -94,3 +94,130 @@
 2025-12-31 13:52:32 [INFO] Request start attempt=2
 2025-12-31 13:52:32 [ERROR] Request failed: Page.wait_for_selector: Connection closed while reading from the driver
 2025-12-31 13:52:32 [INFO] AsyncChatGPTClient stopped
+2025-12-31 16:22:43 [INFO] AsyncChatGPTClient started
+2025-12-31 16:22:52 [INFO] Warm pages ready: 2
+2025-12-31 16:23:17 [INFO] Request start attempt=0
+2025-12-31 16:23:18 [INFO] Request start attempt=0
+2025-12-31 16:23:23 [INFO] Request completed
+2025-12-31 16:23:23 [INFO] Request start attempt=0
+2025-12-31 16:23:28 [INFO] Request completed
+2025-12-31 16:23:29 [INFO] Request completed
+2025-12-31 16:23:32 [INFO] Request start attempt=0
+2025-12-31 16:23:39 [INFO] Request start attempt=0
+2025-12-31 16:23:51 [INFO] Request completed
+2025-12-31 16:23:51 [INFO] Request start attempt=0
+2025-12-31 16:24:01 [INFO] Request completed
+2025-12-31 16:24:01 [INFO] Request start attempt=0
+2025-12-31 16:24:05 [INFO] Request completed
+2025-12-31 16:24:05 [INFO] Request start attempt=0
+2025-12-31 16:24:08 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 16:24:12 [INFO] Request start attempt=0
+2025-12-31 16:24:16 [INFO] Request completed
+2025-12-31 16:24:16 [INFO] Request start attempt=0
+2025-12-31 16:24:17 [INFO] Request completed
+2025-12-31 16:24:17 [INFO] Request start attempt=1
+2025-12-31 16:24:21 [INFO] Request completed
+2025-12-31 16:24:51 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 16:24:56 [INFO] Request start attempt=2
+2025-12-31 16:25:01 [INFO] Request completed
+2025-12-31 16:25:14 [INFO] Request start attempt=0
+2025-12-31 16:25:15 [INFO] Request start attempt=0
+2025-12-31 16:25:22 [INFO] Request completed
+2025-12-31 16:25:22 [INFO] Request completed
+2025-12-31 16:25:22 [INFO] Request start attempt=0
+2025-12-31 16:25:36 [INFO] Request start attempt=0
+2025-12-31 16:25:45 [INFO] Request completed
+2025-12-31 16:25:45 [INFO] Request start attempt=0
+2025-12-31 16:25:56 [INFO] Request completed
+2025-12-31 16:25:56 [INFO] Request start attempt=0
+2025-12-31 16:26:05 [INFO] Request completed
+2025-12-31 16:26:05 [INFO] Request start attempt=0
+2025-12-31 16:26:10 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 16:26:12 [INFO] Request start attempt=0
+2025-12-31 16:26:19 [INFO] Request completed
+2025-12-31 16:26:19 [INFO] Request start attempt=0
+2025-12-31 16:26:24 [INFO] Request completed
+2025-12-31 16:26:24 [INFO] Request start attempt=0
+2025-12-31 16:26:30 [INFO] Request completed
+2025-12-31 16:26:30 [INFO] Request start attempt=1
+2025-12-31 16:26:35 [INFO] Request completed
+2025-12-31 16:26:39 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 16:26:43 [INFO] Request start attempt=1
+2025-12-31 16:26:50 [INFO] Request completed
+2025-12-31 19:37:47 [INFO] AsyncChatGPTClient stopped
+2025-12-31 19:38:07 [INFO] AsyncChatGPTClient started
+2025-12-31 19:38:16 [INFO] Warm pages ready: 2
+2025-12-31 19:41:11 [INFO] Request start attempt=0
+2025-12-31 19:41:12 [INFO] Request start attempt=0
+2025-12-31 19:41:19 [INFO] Request completed
+2025-12-31 19:41:19 [INFO] Request start attempt=0
+2025-12-31 19:41:21 [INFO] Request completed
+2025-12-31 19:41:21 [INFO] Request start attempt=0
+2025-12-31 19:41:35 [INFO] Request completed
+2025-12-31 19:41:35 [INFO] Request start attempt=0
+2025-12-31 19:41:47 [INFO] Request completed
+2025-12-31 19:41:47 [INFO] Request start attempt=0
+2025-12-31 19:41:57 [INFO] Request completed
+2025-12-31 19:41:57 [INFO] Request start attempt=0
+2025-12-31 19:41:58 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 19:42:01 [INFO] Request start attempt=0
+2025-12-31 19:42:05 [INFO] Request completed
+2025-12-31 19:42:05 [INFO] Request start attempt=0
+2025-12-31 19:42:11 [INFO] Request completed
+2025-12-31 19:42:11 [INFO] Request start attempt=0
+2025-12-31 19:42:14 [INFO] Request completed
+2025-12-31 19:42:14 [INFO] Request start attempt=1
+2025-12-31 19:42:16 [INFO] Request completed
+2025-12-31 19:42:23 [INFO] Request completed
+2025-12-31 19:47:51 [INFO] AsyncChatGPTClient stopped
+2025-12-31 19:48:01 [INFO] AsyncChatGPTClient started
+2025-12-31 19:50:00 [INFO] Request start attempt=0
+2025-12-31 19:50:09 [INFO] Request start attempt=0
+2025-12-31 19:50:14 [INFO] Request completed
+2025-12-31 19:50:14 [INFO] Request start attempt=0
+2025-12-31 19:50:21 [INFO] Request completed
+2025-12-31 19:50:21 [INFO] Request start attempt=0
+2025-12-31 19:50:22 [INFO] Request completed
+2025-12-31 19:50:22 [INFO] Request start attempt=0
+2025-12-31 19:50:30 [INFO] Request completed
+2025-12-31 19:50:33 [INFO] Request completed
+2025-12-31 19:50:33 [INFO] Request start attempt=0
+2025-12-31 19:50:33 [INFO] Request start attempt=0
+2025-12-31 19:50:38 [INFO] Request completed
+2025-12-31 19:50:38 [INFO] Request start attempt=0
+2025-12-31 19:51:09 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 19:51:12 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 19:51:21 [INFO] Request start attempt=0
+2025-12-31 19:51:21 [INFO] Request start attempt=0
+2025-12-31 19:51:29 [INFO] Request completed
+2025-12-31 19:51:29 [INFO] Request start attempt=1
+2025-12-31 19:51:33 [INFO] Request completed
+2025-12-31 19:51:33 [INFO] Request start attempt=1
+2025-12-31 19:51:36 [INFO] Request completed
+2025-12-31 19:52:06 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 19:52:12 [INFO] Request start attempt=2
+2025-12-31 19:52:21 [INFO] Request completed
+2025-12-31 19:55:06 [INFO] AsyncChatGPTClient stopped
+2025-12-31 19:57:46 [INFO] AsyncChatGPTClient started
+2025-12-31 19:58:00 [INFO] Warm pages ready: 2
+2025-12-31 19:58:00 [INFO] Request start attempt=0
+2025-12-31 19:58:01 [INFO] Request start attempt=0
+2025-12-31 19:58:10 [INFO] Request completed
+2025-12-31 19:58:10 [INFO] Request start attempt=0
+2025-12-31 19:58:10 [INFO] Request completed
+2025-12-31 19:58:10 [INFO] Request start attempt=0
+2025-12-31 19:58:14 [INFO] AsyncChatGPTClient stopped
+2025-12-31 20:08:08 [INFO] AsyncChatGPTClient started
+2025-12-31 20:08:24 [INFO] Warm pages ready: 2
+2025-12-31 20:08:24 [INFO] Request start attempt=0
+2025-12-31 20:08:36 [INFO] Request completed
+2025-12-31 20:12:55 [INFO] AsyncChatGPTClient stopped
+2025-12-31 20:30:43 [INFO] API request start model=gemini-3-pro url=https://grsaiapi.com/v1/chat/completions
+2025-12-31 20:36:55 [INFO] API request start model=gemini-3-pro url=https://grsaiapi.com/v1/chat/completions
+2025-12-31 20:37:19 [INFO] API request completed in 23.87s
+2025-12-31 20:38:39 [INFO] API request start model=gemini-3-pro url=https://grsaiapi.com/v1/chat/completions
+2025-12-31 20:40:06 [INFO] API request completed in 86.48s
+2025-12-31 21:10:08 [INFO] API request start model=gemini-3-pro url=https://grsaiapi.com/v1/chat/completions
+2025-12-31 21:10:46 [INFO] API request completed in 37.49s
+2025-12-31 21:14:56 [INFO] API request start model=gemini-3-pro url=https://grsaiapi.com/v1/chat/completions
+2025-12-31 21:15:24 [INFO] API request completed in 28.01s

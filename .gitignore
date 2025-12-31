@@ -1,0 +1,6 @@
+.chatgpt_profile/
+__pycache__/
+*.pyc
+debug/
+log/
+_temp/
