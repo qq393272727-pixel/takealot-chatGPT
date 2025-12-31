@@ -1,0 +1,23 @@
+2025/12/31-13:48:29.326 868 Reusing MANIFEST C:\Takealot\web\takealot-chatGPT\.chatgpt_profile\Default\Local Storage\leveldb/MANIFEST-000001
+2025/12/31-13:48:29.329 868 Recovering log #248
+2025/12/31-13:48:29.332 868 Reusing old log C:\Takealot\web\takealot-chatGPT\.chatgpt_profile\Default\Local Storage\leveldb/000248.log 
+2025/12/31-13:49:29.347 11bd8 Level-0 table #251: started
+2025/12/31-13:49:29.353 11bd8 Level-0 table #251: 20701 bytes OK
+2025/12/31-13:49:29.355 11bd8 Delete type=0 #248
+2025/12/31-13:50:32.141 11bd8 Level-0 table #253: started
+2025/12/31-13:50:32.149 11bd8 Level-0 table #253: 28965 bytes OK
+2025/12/31-13:50:32.151 11bd8 Delete type=0 #250
+2025/12/31-13:50:32.152 11bd8 Compacting 4@0 + 1@1 files
+2025/12/31-13:50:32.162 11bd8 Generated table #254@0: 25 keys, 29611 bytes
+2025/12/31-13:50:32.162 11bd8 Compacted 4@0 + 1@1 files => 29611 bytes
+2025/12/31-13:50:32.171 11bd8 compacted to: files[ 0 1 1 0 0 0 0 ]
+2025/12/31-13:50:32.178 11bd8 Delete type=2 #243
+2025/12/31-13:50:32.178 11bd8 Delete type=2 #245
+2025/12/31-13:50:32.178 11bd8 Delete type=2 #247
+2025/12/31-13:50:32.178 11bd8 Delete type=2 #251
+2025/12/31-13:50:32.178 11bd8 Delete type=2 #253
+2025/12/31-13:51:32.128 11bd8 Level-0 table #256: started
+2025/12/31-13:51:32.133 11bd8 Level-0 table #256: 30222 bytes OK
+2025/12/31-13:51:32.135 11bd8 Delete type=0 #252
+2025/12/31-13:52:28.501 5ee0 Level-0 table #258: started
+2025/12/31-13:52:28.515 5ee0 Level-0 table #258: 30217 bytes OK

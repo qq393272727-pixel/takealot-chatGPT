@@ -1,0 +1,96 @@
+2025-12-31 10:16:58 [INFO] ChatGPTClient started
+2025-12-31 10:20:26 [INFO] ChatGPTClient stopped
+2025-12-31 10:26:32 [INFO] ChatGPTClient started
+2025-12-31 10:42:24 [INFO] ChatGPTClient started
+2025-12-31 10:50:48 [INFO] ChatGPTClient started
+2025-12-31 10:56:01 [INFO] ChatGPTClient stopped
+2025-12-31 10:58:00 [INFO] ChatGPTClient started
+2025-12-31 10:58:09 [INFO] Page acquired
+2025-12-31 10:58:09 [INFO] Request start attempt=0
+2025-12-31 10:58:18 [INFO] Request completed
+2025-12-31 10:59:08 [INFO] Page acquired
+2025-12-31 10:59:08 [INFO] Request start attempt=0
+2025-12-31 10:59:15 [INFO] Request completed
+2025-12-31 10:59:15 [INFO] Page acquired
+2025-12-31 10:59:15 [INFO] Request start attempt=0
+2025-12-31 10:59:23 [INFO] Request completed
+2025-12-31 10:59:23 [INFO] Page acquired
+2025-12-31 10:59:23 [INFO] Request start attempt=0
+2025-12-31 10:59:29 [INFO] Request completed
+2025-12-31 10:59:29 [INFO] Page acquired
+2025-12-31 10:59:29 [INFO] Request start attempt=0
+2025-12-31 10:59:35 [INFO] Request completed
+2025-12-31 10:59:35 [INFO] Page acquired
+2025-12-31 10:59:35 [INFO] Request start attempt=0
+2025-12-31 10:59:42 [INFO] Request completed
+2025-12-31 10:59:43 [INFO] Page acquired
+2025-12-31 10:59:43 [INFO] Request start attempt=0
+2025-12-31 10:59:50 [INFO] Request completed
+2025-12-31 10:59:50 [INFO] Page acquired
+2025-12-31 10:59:50 [INFO] Request start attempt=0
+2025-12-31 10:59:58 [INFO] Request completed
+2025-12-31 10:59:58 [INFO] Page acquired
+2025-12-31 10:59:58 [INFO] Request start attempt=0
+2025-12-31 11:00:05 [INFO] Request completed
+2025-12-31 11:00:05 [INFO] Page acquired
+2025-12-31 11:00:05 [INFO] Request start attempt=0
+2025-12-31 11:00:12 [INFO] Request completed
+2025-12-31 11:00:13 [INFO] Page acquired
+2025-12-31 11:00:13 [INFO] Request start attempt=0
+2025-12-31 11:00:22 [INFO] Request completed
+2025-12-31 13:48:20 [INFO] AsyncChatGPTClient started
+2025-12-31 13:48:30 [INFO] AsyncChatGPTClient started
+2025-12-31 13:48:57 [INFO] Warm pages ready: 5
+2025-12-31 13:48:57 [INFO] Request start attempt=0
+2025-12-31 13:48:57 [INFO] Request start attempt=0
+2025-12-31 13:48:57 [INFO] Request start attempt=0
+2025-12-31 13:49:04 [INFO] Request start attempt=0
+2025-12-31 13:49:11 [INFO] Request completed
+2025-12-31 13:49:11 [INFO] Request completed
+2025-12-31 13:49:11 [INFO] Request completed
+2025-12-31 13:49:14 [INFO] Request start attempt=0
+2025-12-31 13:49:15 [INFO] Request completed
+2025-12-31 13:49:15 [INFO] Request start attempt=0
+2025-12-31 13:49:15 [INFO] Request start attempt=0
+2025-12-31 13:49:15 [INFO] Request start attempt=0
+2025-12-31 13:49:15 [INFO] Request start attempt=0
+2025-12-31 13:49:20 [INFO] Request start attempt=0
+2025-12-31 13:49:20 [INFO] Request completed
+2025-12-31 13:49:20 [INFO] Request completed
+2025-12-31 13:49:20 [INFO] Request completed
+2025-12-31 13:49:27 [INFO] Request completed
+2025-12-31 13:49:28 [INFO] Request completed
+2025-12-31 13:49:34 [INFO] Request completed
+2025-12-31 13:50:15 [INFO] Request start attempt=0
+2025-12-31 13:50:16 [INFO] Request start attempt=0
+2025-12-31 13:50:17 [INFO] Request start attempt=0
+2025-12-31 13:50:18 [INFO] Request start attempt=0
+2025-12-31 13:50:18 [INFO] Request start attempt=0
+2025-12-31 13:50:19 [INFO] Request start attempt=0
+2025-12-31 13:50:22 [INFO] Request start attempt=0
+2025-12-31 13:50:25 [INFO] Request start attempt=0
+2025-12-31 13:50:32 [INFO] Request start attempt=0
+2025-12-31 13:50:32 [INFO] Request completed
+2025-12-31 13:50:32 [INFO] Request completed
+2025-12-31 13:50:32 [INFO] Request start attempt=0
+2025-12-31 13:50:35 [INFO] Request completed
+2025-12-31 13:50:36 [INFO] Request completed
+2025-12-31 13:50:38 [INFO] Request completed
+2025-12-31 13:50:43 [INFO] Request completed
+2025-12-31 13:51:51 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 13:51:51 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 13:51:51 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 13:51:53 [ERROR] Request failed: 等待回复超时，请重试。
+2025-12-31 13:52:14 [INFO] Request start attempt=1
+2025-12-31 13:52:15 [INFO] Request start attempt=1
+2025-12-31 13:52:15 [INFO] Request start attempt=1
+2025-12-31 13:52:15 [ERROR] Request failed: Page.wait_for_selector: Target page, context or browser has been closed
+2025-12-31 13:52:23 [INFO] Request start attempt=1
+2025-12-31 13:52:23 [ERROR] Request failed: Page.wait_for_selector: Target page, context or browser has been closed
+2025-12-31 13:52:23 [INFO] Request completed
+2025-12-31 13:52:28 [ERROR] Request failed: BrowserContext.new_page: Protocol error (Target.createTarget): Failed to open a new tab
+2025-12-31 13:52:28 [INFO] Request start attempt=2
+2025-12-31 13:52:28 [ERROR] Request failed: Page.wait_for_selector: Target page, context or browser has been closed
+2025-12-31 13:52:32 [INFO] Request start attempt=2
+2025-12-31 13:52:32 [ERROR] Request failed: Page.wait_for_selector: Connection closed while reading from the driver
+2025-12-31 13:52:32 [INFO] AsyncChatGPTClient stopped
