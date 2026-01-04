@@ -32,7 +32,7 @@ DEFAULT_TRANSLATE_TEMPLATE = "只翻译,无需返回其他内容: {text}"
 DEFAULT_BRAND_TEMPLATE = "只返回是/否,无需返回其他内容;在Takealot中跟卖是否存在品牌侵权: {text}"
 DEFAULT_QA_MODE = "api"
 DEFAULT_API_BASE_URL = "https://grsaiapi.com"
-DEFAULT_QA_MODEL = "gemini-3-pro"
+DEFAULT_QA_MODEL = "gemini-2.5-flash"
 DEFAULT_API_TIMEOUT_SEC = 120
 SUPPORTED_API_MODELS = [
     "nano-banana-fast",
@@ -640,13 +640,9 @@ def _render_config_page(templates, settings, logs, message=None, error=None, bas
     api_timeout_sec = escape(str(settings.get("api_timeout_sec", DEFAULT_API_TIMEOUT_SEC)))
     model_value = (settings.get("api_model") or DEFAULT_QA_MODEL).strip()
     options = []
-    if model_value and model_value not in SUPPORTED_API_MODELS:
-        custom_value = escape(model_value)
-        options.append(f'<option value="{custom_value}" selected>{custom_value} (custom)</option>')
     for model in SUPPORTED_API_MODELS:
-        selected = " selected" if model == model_value else ""
         model_escaped = escape(model)
-        options.append(f'<option value="{model_escaped}"{selected}>{model_escaped}</option>')
+        options.append(f'<option value="{model_escaped}"></option>')
     api_model_options = "\n".join(options)
     base_url = (base_url or "/").strip()
     if not base_url.endswith("/"):
@@ -808,9 +804,10 @@ def _render_config_page(templates, settings, logs, message=None, error=None, bas
         <label>API Key</label>
         <input type="password" name="api_key" value="__API_KEY__" />
         <label>默认模型</label>
-        <select name="api_model">
+        <input type="text" name="api_model" list="api-models" value="__API_MODEL__" />
+        <datalist id="api-models">
           __API_MODEL_OPTIONS__
-        </select>
+        </datalist>
         <label>API 超时(秒)</label>
         <input type="number" name="api_timeout_sec" value="__API_TIMEOUT__" min="10" max="600" />
       </div>
