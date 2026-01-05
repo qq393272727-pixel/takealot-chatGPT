@@ -121,11 +121,13 @@ class PageState:
 
 def _db_config():
     return {
-        "host": os.environ.get("CHATGPT_DB_HOST", "localhost"),
+        "host": os.environ.get(
+            "CHATGPT_DB_HOST", "rm-2zef02420yq68935p0o.mysql.rds.aliyuncs.com"
+        ),
         "port": int(os.environ.get("CHATGPT_DB_PORT", "3306")),
         "user": os.environ.get("CHATGPT_DB_USER", "root"),
         "password": os.environ.get("CHATGPT_DB_PASS", "Masu@123!"),
-        "database": os.environ.get("CHATGPT_DB_NAME", "chatgpt_automation"),
+        "database": os.environ.get("CHATGPT_DB_NAME", "takealot"),
     }
 
 
@@ -988,17 +990,23 @@ class ChatGPTClient:
     def __enter__(self):
         self._playwright = sync_playwright().start()
         self.user_data_dir.mkdir(parents=True, exist_ok=True)
+        chromium_path = os.getenv("CHROMIUM_PATH")
         args = [
             "--disable-blink-features=AutomationControlled",
             "--disable-dev-shm-usage",
         ]
         if not self.headless and self.start_minimized:
             args.append("--start-minimized")
+        launch_kwargs = {
+            "user_data_dir": str(self.user_data_dir),
+            "headless": self.headless,
+            "args": args,
+            "viewport": {"width": 1280, "height": 900},
+        }
+        if chromium_path:
+            launch_kwargs["executable_path"] = chromium_path
         self._context = self._playwright.chromium.launch_persistent_context(
-            user_data_dir=str(self.user_data_dir),
-            headless=self.headless,
-            args=args,
-            viewport={"width": 1280, "height": 900},
+            **launch_kwargs
         )
         self._context.set_default_timeout(self.timeout_ms)
         if self._warm_on_start:
@@ -2090,17 +2098,23 @@ class AsyncChatGPTClient:
     async def start(self):
         self._playwright = await async_playwright().start()
         self.user_data_dir.mkdir(parents=True, exist_ok=True)
+        chromium_path = os.getenv("CHROMIUM_PATH")
         args = [
             "--disable-blink-features=AutomationControlled",
             "--disable-dev-shm-usage",
         ]
         if not self.headless and self.start_minimized:
             args.append("--start-minimized")
+        launch_kwargs = {
+            "user_data_dir": str(self.user_data_dir),
+            "headless": self.headless,
+            "args": args,
+            "viewport": {"width": 1280, "height": 900},
+        }
+        if chromium_path:
+            launch_kwargs["executable_path"] = chromium_path
         self._context = await self._playwright.chromium.launch_persistent_context(
-            user_data_dir=str(self.user_data_dir),
-            headless=self.headless,
-            args=args,
-            viewport={"width": 1280, "height": 900},
+            **launch_kwargs
         )
         self._context.set_default_timeout(self.timeout_ms)
         if self.warm_pages > self.max_pages:
@@ -2704,10 +2718,16 @@ def _make_handler(engine_provider):
                 return {}
 
         def _base_url(self):
-            host = self.headers.get("Host")
+            prefix = (self.headers.get("X-Forwarded-Prefix") or "").strip()
+            if prefix and not prefix.startswith("/"):
+                prefix = f"/{prefix}"
+            prefix = prefix.rstrip("/")
+            host = self.headers.get("X-Forwarded-Host") or self.headers.get("Host")
+            proto = (self.headers.get("X-Forwarded-Proto") or "http").strip()
+            path = f"{prefix}/" if prefix else "/"
             if host:
-                return f"http://{host}/"
-            return "/"
+                return f"{proto}://{host}{path}"
+            return path
 
         def do_GET(self):
             if self.path in ("/config", "/"):

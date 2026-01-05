@@ -162,11 +162,11 @@ http://127.0.0.1:8000/config
 
 默认连接:
 
-- host: `localhost`
+- host: `rm-2zef02420yq68935p0o.mysql.rds.aliyuncs.com`
 - port: `3306`
 - user: `root`
 - password: `Masu@123!`
-- database: `chatgpt_automation`
+- database: `takealot`
 
 可通过环境变量覆盖:
 
