@@ -115,6 +115,7 @@ py chatgpt_automation.py serve --host 127.0.0.1 --port 8000 --headed
 - `POST /brand`
 - `POST /qa`
 - `POST /product`
+- `POST /takealot`
 - `Content-Type: application/json`
 - Body: `{ "text": "..." }`
 
@@ -202,6 +203,12 @@ curl -X POST http://127.0.0.1:8000/product ^
   -d "{\"title\":\"Nike Air Max 270\",\"description\":\"brand: Nike; size: 30cm x 20cm x 10cm; weight: 500g\"}"
 ```
 
+```bash
+curl -X POST http://127.0.0.1:8000/takealot ^
+  -H "Content-Type: application/json" ^
+  -d "{\"description\":\"Title: Damascus folding knife. Material: VG10 steel. Size: 18 x 3 x 2 cm.\"}"
+```
+
 返回示例:
 
 ```json
@@ -214,6 +221,18 @@ curl -X POST http://127.0.0.1:8000/product ^
   "height": 10,
   "weight_g": 500,
   "volume_weight_g": 10000
+}
+```
+
+```json
+{
+  "title": "Damascus Folding Knife VG10",
+  "subtitle": "Compact outdoor knife for everyday carry",
+  "description": "VG10 Damascus steel folding knife with a sharp edge and compact form for camping and daily use.",
+  "material": "VG10 Damascus steel",
+  "length_cm": 18,
+  "width_cm": 3,
+  "height_cm": 2
 }
 ```
 

@@ -43,6 +43,7 @@ SUPPORTED_API_MODELS = [
     "gemini-2.5-flash-lite",
 ]
 PRODUCT_ENDPOINT = "/product"
+TAKEALOT_ENDPOINT = "/takealot"
 DEFAULT_WARM_PAGES = 5
 DEFAULT_MAX_PAGES = 10
 DEFAULT_MAX_TURNS_PER_PAGE = 10
@@ -606,6 +607,55 @@ def _call_product_api(title, description, settings):
     except json.JSONDecodeError as exc:
         raise RuntimeError("API 返回 JSON 解析失败。") from exc
     return _normalize_product_payload(payload)
+
+
+def _normalize_takealot_payload(data):
+    title = (data.get("title") or "").strip()
+    subtitle = (data.get("subtitle") or "").strip()
+    description = (data.get("description") or "").strip()
+    material = (data.get("material") or "").strip()
+    length = _to_number(data.get("length_cm") or data.get("length"))
+    width = _to_number(data.get("width_cm") or data.get("width"))
+    height = _to_number(data.get("height_cm") or data.get("height"))
+    if len(title) > 75:
+        title = title[:75].rstrip()
+    return {
+        "title": title,
+        "subtitle": subtitle,
+        "description": description,
+        "material": material,
+        "length_cm": length,
+        "width_cm": width,
+        "height_cm": height,
+    }
+
+
+def _build_takealot_prompt(description):
+    return (
+        "You are a strict JSON generator. "
+        "Return ONLY a JSON object, no extra text. "
+        "Write English copy for a South African Takealot product listing. "
+        "Title must be <= 75 characters and optimized for search. "
+        "Provide subtitle and a concise description. "
+        "Extract material if present; otherwise empty string. "
+        "Extract dimensions in cm if present; otherwise 0. "
+        "Output schema exactly: "
+        "{title:'', subtitle:'', description:'', material:'', length_cm:0, width_cm:0, height_cm:0}. "
+        f"Input: {description}."
+    )
+
+
+def _call_takealot_api(description, settings):
+    prompt = _build_takealot_prompt(description)
+    text = _call_chat_api(prompt, settings)
+    json_text = _extract_json_object(text)
+    if not json_text:
+        raise RuntimeError("API 返回未包含 JSON。")
+    try:
+        payload = json.loads(json_text)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("API 返回 JSON 解析失败。") from exc
+    return _normalize_takealot_payload(payload)
 
 
 def _write_api_response_debug(data):
@@ -2887,7 +2937,7 @@ def _make_handler(engine_provider):
                 self.wfile.write(data)
                 return
 
-            if self.path not in ("/translate", "/brand", "/qa", PRODUCT_ENDPOINT):
+            if self.path not in ("/translate", "/brand", "/qa", PRODUCT_ENDPOINT, TAKEALOT_ENDPOINT):
                 self._send_json(404, {"error": "not_found"})
                 return
 
@@ -2902,6 +2952,11 @@ def _make_handler(engine_provider):
                 if not title and not description:
                     self._send_json(400, {"error": "missing_title_or_description"})
                     return
+            elif self.path == TAKEALOT_ENDPOINT:
+                description = (data.get("description") or data.get("text") or "").strip()
+                if not description:
+                    self._send_json(400, {"error": "missing_description"})
+                    return
             else:
                 text = (data.get("text") or "").strip()
                 if not text:
@@ -2912,6 +2967,8 @@ def _make_handler(engine_provider):
                 settings = _get_settings()
                 if self.path == PRODUCT_ENDPOINT:
                     result = _call_product_api(title, description, settings)
+                elif self.path == TAKEALOT_ENDPOINT:
+                    result = _call_takealot_api(description, settings)
                 elif settings.get("qa_mode") == "api":
                     if self.path == "/translate":
                         templates = _get_templates()
@@ -2940,7 +2997,7 @@ def _make_handler(engine_provider):
                 self._send_json(500, {"error": "internal_error", "detail": str(exc)})
                 return
 
-            if self.path == PRODUCT_ENDPOINT:
+            if self.path == PRODUCT_ENDPOINT or self.path == TAKEALOT_ENDPOINT:
                 self._send_json(200, result)
             else:
                 self._send_json(200, {"result": result})
