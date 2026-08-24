@@ -16,7 +16,7 @@ jobs:
   catalog:
     strategy:
       fail-fast: false
-      max-parallel: 8
+      max-parallel: 3
       matrix:
         category: [0,1,2,3,4,5,6,7,8,9,10,11,12]
     runs-on: ubuntu-latest
@@ -42,7 +42,7 @@ jobs:
     needs: catalog
     strategy:
       fail-fast: false
-      max-parallel: 16
+      max-parallel: 4
       matrix:
         category: [0,1,2,3,4,5,6,7,8,9,10,11,12]
         shard: [0,1,2,3,4,5,6,7]
@@ -73,7 +73,7 @@ jobs:
           PY
       - name: Collect reviews
         run: |
-          python scripts/takealot_toys_reviews_full.py --input slice.csv --out reviews --workers 14 --page-cap 500
+          python scripts/takealot_toys_reviews_full.py --input slice.csv --out reviews --workers 4 --page-cap 500
           cat reviews/progress.json
           wc -l reviews/review_summary.csv
           wc -l reviews/review_dates_since_2025.csv
