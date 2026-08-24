@@ -1,0 +1,155 @@
+name: Takealot Toys Full Reviews Public
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - '.github/workflows/takealot-toys-full-reviews-public.yml'
+      - 'scripts/takealot_toys_all_links.py'
+      - 'scripts/takealot_toys_reviews_full.py'
+
+permissions:
+  contents: read
+
+env:
+  PYTHONUNBUFFERED: '1'
+
+jobs:
+  catalog:
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        category: [0,1,2,3,4,5,6,7,8,9,10,11,12]
+    runs-on: ubuntu-latest
+    timeout-minutes: 150
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check curl_cffi
+      - name: Collect category links
+        run: |
+          python scripts/takealot_toys_all_links.py --index ${{ matrix.category }} --out catalog
+          cat catalog/progress.json
+          wc -l catalog/links.csv
+      - uses: actions/upload-artifact@v4
+        with:
+          name: toy-catalog-${{ matrix.category }}
+          path: catalog/
+          retention-days: 7
+
+  reviews:
+    needs: catalog
+    strategy:
+      fail-fast: false
+      max-parallel: 16
+      matrix:
+        category: [0,1,2,3,4,5,6,7,8,9,10,11,12]
+        shard: [0,1,2,3,4,5,6,7]
+    runs-on: ubuntu-latest
+    timeout-minutes: 330
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: python -m pip install --disable-pip-version-check curl_cffi
+      - uses: actions/download-artifact@v4
+        with:
+          name: toy-catalog-${{ matrix.category }}
+          path: catalog
+      - name: Slice catalog
+        env:
+          SHARD: ${{ matrix.shard }}
+        run: |
+          python - <<'PY'
+          import csv,os
+          src='catalog/links.csv'; dst='slice.csv'; shard=int(os.environ['SHARD']); n=8
+          with open(src,encoding='utf-8-sig',newline='') as f:
+              r=csv.DictReader(f); fields=r.fieldnames; rows=[x for i,x in enumerate(r) if i % n == shard]
+          with open(dst,'w',encoding='utf-8-sig',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields); w.writeheader(); w.writerows(rows)
+          print('slice rows',len(rows),'shard',shard)
+          PY
+      - name: Collect reviews
+        run: |
+          python scripts/takealot_toys_reviews_full.py --input slice.csv --out reviews --workers 14 --page-cap 500
+          cat reviews/progress.json
+          wc -l reviews/review_summary.csv
+          wc -l reviews/review_dates_since_2025.csv
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: toy-reviews-c${{ matrix.category }}-s${{ matrix.shard }}
+          path: reviews/
+          retention-days: 14
+
+  merge:
+    needs: reviews
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: toy-reviews-c*-s*
+          path: shards
+      - name: Merge and global-dedupe by PLID
+        run: |
+          python - <<'PY'
+          import csv,json
+          from pathlib import Path
+          summary={}; cats={}; raw=set(); source_files=0
+          for fn in Path('shards').glob('**/review_summary.csv'):
+              source_files+=1
+              with fn.open(encoding='utf-8-sig',newline='') as f:
+                  for r in csv.DictReader(f):
+                      p=(r.get('plid') or '').strip()
+                      if not p: continue
+                      if p not in summary: summary[p]=dict(r); cats[p]=set()
+                      if r.get('top_category'): cats[p].add(r['top_category'])
+          for fn in Path('shards').glob('**/review_dates_since_2025.csv'):
+              with fn.open(encoding='utf-8-sig',newline='') as f:
+                  for r in csv.DictReader(f):
+                      p=(r.get('plid') or '').strip(); d=(r.get('review_date') or '').strip(); rating=(r.get('rating') or '').strip()
+                      if p and d: raw.add((p,d,rating))
+          out=Path('merged');out.mkdir(exist_ok=True)
+          base_fields=[]
+          if summary: base_fields=list(next(iter(summary.values())).keys())
+          fields=base_fields+(['top_categories'] if 'top_categories' not in base_fields else [])
+          with (out/'takealot_toys_full_review_summary.csv').open('w',encoding='utf-8-sig',newline='') as f:
+              w=csv.DictWriter(f,fieldnames=fields,extrasaction='ignore');w.writeheader()
+              for p in sorted(summary,key=lambda x:int(x) if x.isdigit() else x):
+                  r=dict(summary[p]); r['top_categories']=' | '.join(sorted(cats.get(p,set()))); w.writerow(r)
+          with (out/'takealot_toys_review_dates_since_2025.csv').open('w',encoding='utf-8-sig',newline='') as f:
+              w=csv.writer(f);w.writerow(['plid','review_date','rating']);w.writerows(sorted(raw,key=lambda x:(int(x[0]) if x[0].isdigit() else x[0],x[1],x[2])))
+          def n(v):
+              try:return int(float(str(v or '0').replace(',','')))
+              except:return 0
+          vals=list(summary.values())
+          progress={
+              'review_shard_files':source_files,
+              'unique_plids':len(summary),
+              'historic_review_skus':sum(n(r.get('total_reviews'))>0 for r in vals),
+              'zero_review_skus':sum(n(r.get('total_reviews'))<=0 for r in vals),
+              'review_date_rows_since_2025':len(raw),
+              'rows_with_errors':sum(bool((r.get('review_error') or '').strip()) for r in vals),
+              'capture_complete_rows':sum(str(r.get('capture_complete_since_2025')).lower()=='true' for r in vals),
+              'page_cap_hits':sum(str(r.get('review_page_cap_hit')).lower()=='true' for r in vals),
+              'base_date':'2026-08-25',
+              'completed':len(summary)>=94000
+          }
+          (out/'progress.json').write_text(json.dumps(progress,ensure_ascii=False,indent=2),encoding='utf-8')
+          print(json.dumps(progress,ensure_ascii=False,indent=2))
+          if len(summary)<94000: raise SystemExit(f'Only {len(summary)} unique PLIDs; below 94,000 validation floor')
+          PY
+      - run: |
+          wc -l merged/*.csv
+          du -h merged/*
+          cat merged/progress.json
+      - uses: actions/upload-artifact@v4
+        with:
+          name: takealot-toys-full-reviews-merged
+          path: merged/
+          retention-days: 30
