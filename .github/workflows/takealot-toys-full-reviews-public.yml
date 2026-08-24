@@ -2,11 +2,9 @@ name: Takealot Toys Full Reviews Public
 
 on:
   workflow_dispatch:
-  push:
+  pull_request:
     paths:
-      - '.github/workflows/takealot-toys-full-reviews-public.yml'
-      - 'scripts/takealot_toys_all_links.py'
-      - 'scripts/takealot_toys_reviews_full.py'
+      - 'research-trigger-toys-full-reviews-public.txt'
 
 permissions:
   contents: read
